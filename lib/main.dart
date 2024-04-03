@@ -41,6 +41,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  List<Map> newsList = [];
 
   void _incrementCounter() {
     setState(() {
@@ -92,11 +93,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
       // 将每列的数据添加到Map中
       data['title'] = row[0]?.value.toString();
-      data['阅读量'] = row[1]?.value.toString();
-      data['评论数'] = row[2]?.value.toString();
-      data['领域'] = row[3]?.value.toString();
-      data['作者'] = row[4]?.value.toString();
-      data['发布时间'] = row[5]?.value.toString();
+      data['readNum'] = row[1]?.value.toString();
+      data['commentNum'] = row[2]?.value.toString();
+      data['linyu'] = row[3]?.value.toString();
+      data['author'] = row[4]?.value.toString();
+      data['date'] = row[5]?.value.toString();
       data['url'] = row[6]?.value.toString();
       data['imageUrl'] = row[7]?.value.toString();
 
@@ -106,20 +107,27 @@ class _MyHomePageState extends State<MyHomePage> {
     print(dataList);
     // 根据标题创建文件夹
     for (var data in dataList) {
-      var title = data['title'];
-      title = sanitizeTitle(title);
-      var folder = Directory("${Directory.systemTemp.path}/tmp/$title");
-      folder.createSync(recursive: true);
-      File file = File("${Directory.systemTemp.path}/tmp/$title/$title.txt");
-      print('data: ${file.absolute}');
       var url = data['url'];
       var htmlContent = await fetchHtmlContent(url);
       // File("${Directory.systemTemp.path}/tmp/$title/news.txt")
       //     .writeAsStringSync(htmlContent);
 
-      htmlContent = extractContent(htmlContent, folder);
-      print('htmlContent: $htmlContent');
-      file.writeAsStringSync(htmlContent);
+      try {
+        var title = data['title'];
+        title = sanitizeTitle(title);
+        var folder = Directory("${Directory.systemTemp.path}/tmp/$title");
+        folder.createSync(recursive: true);
+        File file = File("${Directory.systemTemp.path}/tmp/$title/$title.txt");
+        print('data: ${file.absolute}');
+        htmlContent = extractContent(htmlContent, folder);
+        print('htmlContent: $htmlContent');
+        file.writeAsStringSync(htmlContent);
+        setState(() {
+          newsList.add(data);
+        });
+      } catch (e) {
+        print('Error: $e');
+      }
       print(
           '========================================================================');
     }
@@ -188,7 +196,16 @@ class _MyHomePageState extends State<MyHomePage> {
         }
       });
     }
-
+    // 统计汉字数量
+    var count = txt.runes.where((rune) {
+      return rune >= 0x4e00 && rune <= 0x9fff;
+    }).length;
+    if (count < 300) {
+      throw Exception('文章字数不足');
+    }
+    if (index < 2) {
+      throw Exception('图片数量不足');
+    }
     print(
         '--------------------------------------------------------------------------------- ' +
             txt);
@@ -237,23 +254,84 @@ class _MyHomePageState extends State<MyHomePage> {
         ],
       ),
       body: Center(
-        child: Column(
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
+          child: SingleChildScrollView(
+              child: Column(
+        children: <Widget>[...newsList.map((e) => buildItem(e)).toList()],
+      ))),
       floatingActionButton: FloatingActionButton(
         onPressed: _incrementCounter,
         tooltip: 'Increment',
         child: const Icon(Icons.add),
       ), // This trailing comma makes auto-formatting nicer for build methods.
+    );
+  }
+
+  Container buildItem(item) {
+    return Container(
+      padding: EdgeInsets.only(left: 8, right: 8, top: 8),
+      child: Row(
+        children: [
+          Image.network(
+            item['imageUrl'],
+            width: 100,
+          ),
+          SizedBox(
+            height: 8,
+            width: 8,
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "${item['title']}",
+                  style: TextStyle(fontSize: 16),
+                ),
+                SizedBox(
+                  height: 8,
+                  width: 8,
+                ),
+                Row(
+                  children: [
+                    Text(
+                      "阅读：${item['readNum']}",
+                      style: const TextStyle(fontWeight: FontWeight.w300),
+                    ),
+                    SizedBox(
+                      width: 20,
+                    ),
+                    Text(
+                      "评论：${item['commentNum']}",
+                      style: const TextStyle(fontWeight: FontWeight.w300),
+                    ),
+                    SizedBox(
+                      width: 20,
+                    ),
+                    Text(
+                      "领域：${item['linlyu']}",
+                      style: const TextStyle(fontWeight: FontWeight.w300),
+                    ),
+                    SizedBox(
+                      width: 20,
+                    ),
+                    Text(
+                      "${item['author']}",
+                      style: const TextStyle(fontWeight: FontWeight.w300),
+                    ),
+                    SizedBox(
+                      width: 20,
+                    ),
+                    Text(
+                      "${item['date']}",
+                      style: const TextStyle(fontWeight: FontWeight.w300),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          )
+        ],
+      ),
     );
   }
 }
