@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:html/dom.dart' as htmlDom;
 import 'package:html/parser.dart' as htmlParser;
 import 'package:http/http.dart' as http;
+import 'package:open_file/open_file.dart';
 
 void main() {
   runApp(const MyApp());
@@ -44,12 +45,13 @@ class _MyHomePageState extends State<MyHomePage> {
   List<Map> newsList = [];
 
   void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
+    // Directory.systemTemp.path
+    Directory tempDir = Directory("${Directory.systemTemp.path}/tmp");
+    OpenFile.open(tempDir.path);
   }
 
   selectFile() async {
+    newsList.clear();
     // Navigate to the settings page
     print("file selector");
     const XTypeGroup typeGroup = XTypeGroup(
@@ -109,9 +111,6 @@ class _MyHomePageState extends State<MyHomePage> {
     for (var data in dataList) {
       var url = data['url'];
       var htmlContent = await fetchHtmlContent(url);
-      // File("${Directory.systemTemp.path}/tmp/$title/news.txt")
-      //     .writeAsStringSync(htmlContent);
-
       try {
         var title = data['title'];
         title = sanitizeTitle(title);
@@ -131,16 +130,6 @@ class _MyHomePageState extends State<MyHomePage> {
       print(
           '========================================================================');
     }
-
-    // var excel = Excel.decodeBytes(bytes);
-    // for (var table in excel.tables.keys) {
-    //   print(table);
-    //   print(excel.tables[table]!.maxColumns);
-    //   print(excel.tables[table]!.maxRows);
-    //   for (var row in excel.tables[table]!.rows) {
-    //     print("${row.map((e) => e?.value)}");
-    //   }
-    // }
   }
 
   String extractContent(String htmlContent, Directory directory) {
@@ -201,9 +190,11 @@ class _MyHomePageState extends State<MyHomePage> {
       return rune >= 0x4e00 && rune <= 0x9fff;
     }).length;
     if (count < 300) {
+      directory.deleteSync(recursive: true);
       throw Exception('文章字数不足');
     }
     if (index < 2) {
+      directory.deleteSync(recursive: true);
       throw Exception('图片数量不足');
     }
     print(
@@ -253,11 +244,14 @@ class _MyHomePageState extends State<MyHomePage> {
           IconButton(icon: const Icon(Icons.settings), onPressed: selectFile),
         ],
       ),
-      body: Center(
-          child: SingleChildScrollView(
-              child: Column(
-        children: <Widget>[...newsList.map((e) => buildItem(e)).toList()],
-      ))),
+      body: SingleChildScrollView(
+          child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          ...newsList.map((e) => buildItem(e)),
+        ],
+      )),
       floatingActionButton: FloatingActionButton(
         onPressed: _incrementCounter,
         tooltip: 'Increment',
@@ -268,14 +262,14 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Container buildItem(item) {
     return Container(
-      padding: EdgeInsets.only(left: 8, right: 8, top: 8),
+      padding: const EdgeInsets.only(left: 8, right: 8, top: 8),
       child: Row(
         children: [
           Image.network(
             item['imageUrl'],
             width: 100,
           ),
-          SizedBox(
+          const SizedBox(
             height: 8,
             width: 8,
           ),
