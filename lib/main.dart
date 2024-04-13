@@ -9,6 +9,7 @@ import 'package:html/dom.dart' as htmlDom;
 import 'package:html/parser.dart' as htmlParser;
 import 'package:http/http.dart' as http;
 import 'package:open_file/open_file.dart';
+import 'package:flutter_gbk2utf8/flutter_gbk2utf8.dart';
 
 void main() {
   runApp(const MyApp());
@@ -41,11 +42,9 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
   List<Map> newsList = [];
 
   void _incrementCounter() {
-    // Directory.systemTemp.path
     Directory tempDir = Directory("${Directory.systemTemp.path}/tmp");
     OpenFile.open(tempDir.path);
   }
@@ -63,7 +62,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     if (file != null) {
       readXls(file!.path);
-      print('file: ' + file!.path);
+      print('file: ${file!.path}');
     } else {
       print('file: null');
     }
@@ -111,22 +110,26 @@ class _MyHomePageState extends State<MyHomePage> {
     for (var data in dataList) {
       var url = data['url'];
       var htmlContent = await fetchHtmlContent(url);
-      try {
         var title = data['title'];
         title = sanitizeTitle(title);
         var folder = Directory("${Directory.systemTemp.path}/tmp/$title");
-        folder.createSync(recursive: true);
-        File file = File("${Directory.systemTemp.path}/tmp/$title/$title.txt");
-        print('data: ${file.absolute}');
-        htmlContent = extractContent(htmlContent, folder);
-        print('htmlContent: $htmlContent');
-        file.writeAsStringSync(htmlContent);
-        setState(() {
-          newsList.add(data);
-        });
-      } catch (e) {
-        print('Error: $e');
-      }
+        folder.createSync();
+       try{
+         if(folder.existsSync()) {
+           File file = File("${Directory.systemTemp.path}/tmp/$title/$title.txt");
+           htmlContent = extractContent(htmlContent, folder);
+           file.writeAsStringSync(htmlContent);
+           setState(() {
+             newsList.add(data);
+           });
+         }else{
+           throw Exception('fold create failed');
+         }
+
+       }catch(e){
+         print("error ${e.toString()}");
+       }
+
       print(
           '========================================================================');
     }
@@ -153,7 +156,7 @@ class _MyHomePageState extends State<MyHomePage> {
           if (imgUrl != null) {
             index++;
             downloadImage(imgUrl, '${directory.path}/$index.jpg');
-            txt = "$txt${'这里是文章图片\\$index.jpg'}\n";
+            txt = "$txt${'这里是文章图片/$index.jpg'}\n";
           }
         } else if (node is htmlDom.Element && node.localName == 'p') {
           // 如果是 <p> 元素且包含 <span> 元素，则打印文本内容
@@ -218,7 +221,7 @@ class _MyHomePageState extends State<MyHomePage> {
     if (response.statusCode == HttpStatus.ok) {
       var file = File(savePath);
       await response.pipe(file.openWrite());
-      print('图片已保存到：$savePath');
+      print('图片已保存到：${file.absolute.path}');
     } else {
       print('下载失败：HTTP ${response.statusCode}');
     }
